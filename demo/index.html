@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dragon bot avatar</title>
+  <style>
+    body { margin: 0; font: 13px/1.4 system-ui, sans-serif; background: #121212; color: #ddd; }
+    .stage { margin: 32px; padding: 56px 24px; border-radius: 16px; background: #1a1a1a; display: flex; justify-content: center; align-items: flex-end; gap: 44px; flex-wrap: wrap; }
+    .stage.light { background: #fff; color: #333; }
+    .cell { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .label { font-size: 12px; opacity: .55 }
+    h2 { font-size: 13px; font-weight: 500; margin: 24px 32px -16px; opacity: .6 }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="./main.tsx"></script>
+</body>
+</html>
