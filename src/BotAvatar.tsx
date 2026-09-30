@@ -1,10 +1,10 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties, type MouseEvent } from 'react';
 import type { BotAvatarProps, BotAvatarShading, BotAvatarState } from './types';
 import { botAvatarPresets, stateLabels } from './presets';
-import { SHAPE_PATHS, SHAPE_PARTS } from './shapes';
+import { SHAPE_PATHS, SHAPE_PARTS, SHAPE_LAYERS, HEADPHONE_PATH } from './shapes';
 import { autoInk, shade } from './color';
 import { Sim, restPose } from './engine';
-import { draw, OVERSCAN, RISE, type DrawConfig } from './draw';
+import { draw, OVERSCAN, RISE, type DrawConfig, type DrawLayer } from './draw';
 import { warmPlastic } from './plastic';
 import { subscribe, pointer } from './ticker';
 
@@ -41,6 +41,8 @@ export const BotAvatar = forwardRef<HTMLCanvasElement, BotAvatarProps>(function 
     color,
     ink,
     accent,
+    headphones,
+    headphoneColor,
     brightness = 1,
     saturation = 1.5,
     speed = 1,
@@ -107,6 +109,18 @@ export const BotAvatar = forwardRef<HTMLCanvasElement, BotAvatarProps>(function 
      path share one bake and a changed path never reuses the old one. */
   const customPath = typeof path === 'string' && path.trim() ? path.trim() : null;
   const outlineKey = customPath ? `path:${hashSeed(customPath)}:${customPath.length}` : type;
+  const showHeadphones = headphones ?? preset.headphones ?? false;
+  const phonesColor = tone(headphoneColor ?? (type === 'dragon' ? pickedAccent ?? '#FF5FA2' : '#FF5FA2'));
+  const partsOutline = !customPath && (type !== 'dragon' || showHeadphones) ? SHAPE_PARTS[type] : undefined;
+  const layers: DrawLayer[] = [];
+  if (typeof Path2D !== 'undefined' && !customPath) {
+    for (const [i, layer] of (SHAPE_LAYERS[type] ?? []).entries()) {
+      if (layer.whenFace && layer.whenFace !== faceKind) continue;
+      const baseColor = layer.palette === 'accent' ? accentColor ?? body : body;
+      layers.push({ key: `anatomy:${i}`, path: bodyPath(layer.path), color: layer.lightness ? shade(baseColor, layer.lightness) : baseColor, placement: layer.placement, depth: layer.depth, opacity: layer.opacity, motion: layer.motion, pivot: layer.pivot });
+    }
+    if (showHeadphones && type !== 'dragon') layers.push({ key: 'headphones', path: bodyPath(HEADPHONE_PATH), color: phonesColor, placement: 'behind', depth: 0.75 });
+  }
 
   /* the sim lives across renders; props reach it through refs */
   const sim = useRef<Sim | null>(null);
@@ -136,9 +150,11 @@ export const BotAvatar = forwardRef<HTMLCanvasElement, BotAvatarProps>(function 
     typeKey: outlineKey,
     still: frozen || reducedMotion(),
     whirl: { strength: clamp(whirl, 0, 2), size: clamp(whirlSize, 0.6, 1.6), width: clamp(whirlWidth, 0.4, 2), length: clamp(whirlLength, 0.4, 1.6), tilt: clamp(whirlTilt, 0.5, 1.8) },
-    parts: typeof Path2D !== 'undefined' && !customPath && SHAPE_PARTS[type] ? bodyPath(SHAPE_PARTS[type] as string) : undefined,
+    parts: typeof Path2D !== 'undefined' && partsOutline ? bodyPath(partsOutline) : undefined,
     partsDepth: preset.partsDepth,
-    partsColor: accentColor,
+    partsColor: type === 'dragon' ? phonesColor : accentColor,
+    layers,
+    flight: !customPath && preset.flight,
   };
 
   /* the surface: an ancestor's say, else the system's */
@@ -215,12 +231,18 @@ export const BotAvatar = forwardRef<HTMLCanvasElement, BotAvatarProps>(function 
     const path = cfg.current.path;
     const dev = (typeof size === 'number' ? size : 64) * Math.min(2, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1);
     const ric = (typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1)) as (fn: () => void) => number;
-    const id = ric(() => warmPlastic(outlineKey, path, dev, depth));
+    const id = ric(() => {
+      warmPlastic(outlineKey, path, dev, depth);
+      if (cfg.current?.parts) warmPlastic(`${outlineKey}:parts`, cfg.current.parts, dev, depth * (cfg.current.partsDepth ?? 0.4));
+      cfg.current?.layers?.forEach((layer) => {
+        if (layer.depth > 0) warmPlastic(`${outlineKey}:layer:${layer.key}`, layer.path, dev, depth * layer.depth);
+      });
+    });
     return () => {
       if (typeof cancelIdleCallback === 'function') cancelIdleCallback(id);
       else clearTimeout(id);
     };
-  }, [shadingMode, outlineKey, size, depth]);
+  }, [shadingMode, outlineKey, size, depth, showHeadphones, faceKind]);
 
   /* the loop: only while visible, animated and not reduced */
   useEffect(() => {

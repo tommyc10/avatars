@@ -1,6 +1,6 @@
 import type { CanvasHTMLAttributes, CSSProperties } from 'react';
 
-/** The body shapes: the library's eighteen plus the dragon. */
+/** The library's eighteen shapes and our original fantasy avatars. */
 export type BotAvatarType =
   | 'clover'
   | 'flower'
@@ -20,7 +20,31 @@ export type BotAvatarType =
   | 'pill'
   | 'pebble'
   | 'puddle'
-  | 'dragon';
+  | 'dragon'
+  | 'forest-spirit'
+  | 'winged-dragon'
+  | 'phoenix';
+
+/** A coloured piece of an avatar, in the same 100×100 box as its body. */
+export interface BotAvatarShapeLayer {
+  path: string;
+  palette: 'body' | 'accent';
+  /** Relative lightness adjustment, so body details follow recolouring. */
+  lightness?: number;
+  /** Behind the body, or attached to its front surface. */
+  placement: 'behind' | 'surface';
+  /** Thickness relative to the body. */
+  depth: number;
+  /** Opacity for a zero-depth surface marking. */
+  opacity?: number;
+  /** Optional face variant: a beak yields to an animated mouth. */
+  whenFace?: BotAvatarFace;
+  /** Hinged movement, driven by the shared simulation clock. */
+  motion?: BotAvatarPartMotion;
+  pivot?: [number, number];
+}
+
+export type BotAvatarPartMotion = 'wing-left' | 'wing-right' | 'foot-left' | 'foot-right' | 'tail';
 
 /**
  * What the face is made of. The eyes alone by default; `mouth` adds a
@@ -61,6 +85,10 @@ export interface BotAvatarPreset {
   nostrils?: boolean;
   /** Depth of the thin parts as a fraction of the body's (0.4). */
   partsDepth?: number;
+  /** Headphones are on by default for the original dragon. */
+  headphones?: boolean;
+  /** Hover while awake; settle to the ground while sleeping. */
+  flight?: boolean;
 }
 
 export interface BotAvatarProps
@@ -84,8 +112,12 @@ export interface BotAvatarProps
   color?: string;
   /** Face ink. Defaults to dark, or light on a dark body. */
   ink?: string;
-  /** Colour of the thin parts (the dragon's headphones). Defaults to the type's accent, else the body colour. */
+  /** Colour of the type's details: horns, beak, or original dragon headphones. */
   accent?: string;
+  /** Add headphones, or remove the original dragon's. Defaults to the type's preset. */
+  headphones?: boolean;
+  /** Headphone colour when added to another type. Defaults to pink. */
+  headphoneColor?: string;
   /**
    * Lightness of the body colour: 1 as the palette has it, below 1 darker,
    * above 1 lighter (0.5–1.5 is the useful range). Default `1`.

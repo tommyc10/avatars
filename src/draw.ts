@@ -6,9 +6,22 @@
    lives on the front cap and follows it. */
 
 import type { Pose } from './engine';
-import type { BotAvatarFace, BotAvatarShading } from './types';
+import type { BotAvatarFace, BotAvatarShading, BotAvatarPartMotion } from './types';
+import { partTransform, flightLift, type PartMatrix } from './parts';
 import { shade } from './color';
 import { drawPlasticCap, mulAffine } from './plastic';
+
+export interface DrawLayer {
+  /** Stable within a type, including when accessories are toggled. */
+  key: string;
+  path: Path2D;
+  color: string;
+  placement: 'behind' | 'surface';
+  depth: number;
+  opacity?: number;
+  motion?: BotAvatarPartMotion;
+  pivot?: [number, number];
+}
 
 export interface DrawConfig {
   path: Path2D;
@@ -39,6 +52,9 @@ export interface DrawConfig {
   partsDepth?: number;
   /** the thin parts' own colour; omitted means the body colour */
   partsColor?: string;
+  /** Anatomy and optional accessories, following the body's full pose. */
+  layers?: readonly DrawLayer[];
+  flight?: boolean;
   /** the resolved surface: the whirl is white on dark, black on light */
   theme?: 'dark' | 'light';
   /** the device pixel ratio the context is scaled by: with it given the
@@ -266,7 +282,8 @@ export function draw(ctx: CanvasRenderingContext2D, box: number, pose: Pose, cfg
      and a stretch rises from the base. */
   const cr = Math.cos(pose.roll), sr = Math.sin(pose.roll), kx = pose.sx * S, ky = pose.sy * S;
   const lift = 50 * (1 - pose.sy) * S;
-  const body = mulAffine(base, [cr * kx, sr * kx, -sr * ky, cr * ky, full / 2 + pose.x * S - sr * lift, full / 2 + RISE * box + pose.y * S + cr * lift]);
+  const hover = cfg.flight ? flightLift(pose) : 0;
+  const body = mulAffine(base, [cr * kx, sr * kx, -sr * ky, cr * ky, full / 2 + pose.x * S - sr * lift, full / 2 + RISE * box + (pose.y + hover) * S + cr * lift]);
   ctx.save();
   ctx.setTransform(body[0], body[1], body[2], body[3], body[4], body[5]);
   ctx.lineCap = 'round';
@@ -276,7 +293,18 @@ export function draw(ctx: CanvasRenderingContext2D, box: number, pose: Pose, cfg
   /* one solid: the slice stack (or the plastic material) for an outline
      at a depth; the thin parts come first with a fraction of the depth,
      then the body over them */
-  const drawSolid = (path: Path2D, key: string, halfDepth: number, pal: Palette): boolean => {
+  const drawSolid = (path: Path2D, key: string, halfDepth: number, pal: Palette, offset = 0, part?: PartMatrix): boolean => {
+    let layerBody = offset ? mulAffine(body, [1, 0, 0, 1, sy * offset, -cy * sp * offset]) : body;
+    if (part) {
+      /* Conjugate the hinge through yaw/pitch. The baked material stays
+         unchanged; only its projection moves, avoiding per-frame rebakes. */
+      const [a, b, c, d, e, f] = part;
+      const relative: PartMatrix = [a, b, c, d, e + 50 * a + 50 * c - 50, f + 50 * b + 50 * d - 50];
+      const p: PartMatrix = [cy, sy * sp, 0, cp, 0, 0];
+      const inverse: PartMatrix = [1 / cy, -sy * sp / (cy * cp), 0, 1 / cp, 0, 0];
+      layerBody = mulAffine(layerBody, mulAffine(mulAffine(p, relative), inverse));
+    }
+    ctx.setTransform(layerBody[0], layerBody[1], layerBody[2], layerBody[3], layerBody[4], layerBody[5]);
     /* the lit gradient, in the body's own space: light from the upper left */
     let lit: CanvasGradient | string = pal.near;
     let capFill: CanvasGradient | string = pal.base;
@@ -304,7 +332,7 @@ export function draw(ctx: CanvasRenderingContext2D, box: number, pose: Pose, cfg
       plasticDone = drawPlasticCap(
         ctx,
         { ...cfg, path, typeKey: key },
-        { cy, sy, cp, sp, facing, roll: pose.roll, halfDepth, cap, lx, ly, dev: box * dpr, ctm: body, still: cfg.still },
+        { cy, sy, cp, sp, facing, roll: pose.roll, halfDepth, cap, lx, ly, dev: box * dpr, ctm: layerBody, still: cfg.still },
         pal,
         null,
         { shadow, highlight, spread, rim: cfg.rim ?? 0.5 }
@@ -316,7 +344,7 @@ export function draw(ctx: CanvasRenderingContext2D, box: number, pose: Pose, cfg
     /* slices, far to near; each sets its transform outright from the
        body's, no save/restore */
     const order = facing >= 0 ? 1 : -1;
-    const [ca, cb, cc, cd, ce, cf] = body;
+    const [ca, cb, cc, cd, ce, cf] = layerBody;
     let fill: CanvasGradient | string | null = null;
     /* each slice's affine is applied relative to the previous slice's: one
        transform() per slice, no save/restore */
@@ -372,14 +400,42 @@ export function draw(ctx: CanvasRenderingContext2D, box: number, pose: Pose, cfg
       ctx.restore();
     }
 
+    ctx.setTransform(body[0], body[1], body[2], body[3], body[4], body[5]);
     return plasticDone;
   };
 
   /* the far half of the whirl sits behind everything */
   drawWhirl(ctx, pose, cfg.color, lx, ly, false, cfg.whirl);
 
+  cfg.layers?.forEach((layer) => {
+    if (layer.placement === 'behind') drawSolid(layer.path, `${cfg.typeKey}:layer:${layer.key}`, halfDepth * layer.depth, palette(layer.color, shadow, highlight), 0, layer.motion ? partTransform(pose, layer.motion, layer.pivot ?? [50, 50]) : undefined);
+  });
   if (cfg.parts) drawSolid(cfg.parts, `${cfg.typeKey ?? 'custom'}:parts`, halfDepth * (cfg.partsDepth ?? 0.4), cfg.partsColor ? palette(cfg.partsColor, shadow, highlight) : pal);
   const plasticDone = drawSolid(cfg.path, cfg.typeKey ?? 'custom', halfDepth, pal);
+
+  /* Surface pieces live on the front cap and disappear round the back.
+     Clip them to that cap, so a belly patch cannot float off on a turn. */
+  const setFrontTransform = () => {
+    const sf = profile(1, cap), m0 = cy * sf, m1 = sy * sp * sf, m3 = cp * sf;
+    const e = sy * halfDepth - 50 * m0, fo = -cy * sp * halfDepth - 50 * m1 - 50 * m3;
+    const [ca, cb, cc, cd, ce, cf] = body;
+    ctx.setTransform(ca * m0 + cc * m1, cb * m0 + cd * m1, cc * m3, cd * m3, ca * e + cc * fo + ce, cb * e + cd * fo + cf);
+  };
+  if (facing > 0) cfg.layers?.forEach((layer) => {
+    if (layer.placement !== 'surface') return;
+    ctx.save();
+    setFrontTransform();
+    ctx.clip(cfg.path);
+    if (layer.depth === 0) {
+      /* A printed colour patch keeps the body's existing curvature/gloss. */
+      ctx.globalAlpha = layer.opacity ?? 0.5;
+      ctx.fillStyle = layer.color;
+      ctx.fill(layer.path);
+    } else {
+      drawSolid(layer.path, `${cfg.typeKey}:layer:${layer.key}`, halfDepth * layer.depth, palette(layer.color, shadow, highlight), halfDepth);
+    }
+    ctx.restore();
+  });
 
   /* the face: each feature sits on a sphere behind the front cap, so a
      turn slides it round the head — the eye moving toward the edge

@@ -3,14 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dragon bot avatar</title>
+  <title>Fantasy bot avatars</title>
   <style>
+    * { box-sizing: border-box; }
     body { margin: 0; font: 13px/1.4 system-ui, sans-serif; background: #121212; color: #ddd; }
+    #root { max-width: 1120px; margin: auto; padding-bottom: 48px; }
+    header { margin: 40px 32px 28px; }
+    h1 { font-size: 32px; letter-spacing: -1px; margin: 5px 0 10px; color: #f4f4f4; }
+    .eyebrow { color: #8ebcb1; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .intro { color: #939393; max-width: 620px; }
+    button { font: inherit; cursor: pointer; color: inherit; background: #242424; border: 1px solid #363636; border-radius: 10px; }
+    button:focus-visible, input:focus-visible { outline: 2px solid #79d3bb; outline-offset: 4px; }
+    .fantasy-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin: 0 32px; }
+    .fantasy-card { min-height: 182px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #1a1a1a; overflow: hidden; }
+    .fantasy-card.selected { border-color: #5aa991; background: #19221f; }
+    .workbench { margin: 24px 32px 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; border: 1px solid #303030; border-radius: 16px; padding: 30px; background: #1a1a1a; }
+    .preview { display: flex; align-items: center; justify-content: center; min-height: 252px; }
+    .controls h2 { font-size: 20px; color: #eee; margin: 0 0 18px; opacity: 1; }
+    .controls { min-width: 0; }
+    .state-buttons { display: flex; gap: 8px; margin-bottom: 18px; }
+    .state-buttons button { padding: 7px 15px; }
+    .state-buttons button[aria-pressed=true] { background: #35594b; border-color: #5aa991; }
+    .toggle { display: flex; align-items: center; gap: 8px; margin: 10px 0; color: #bbb; }
+    input { accent-color: #79d3bb; }
+    .color-controls { display: flex; gap: 18px; margin: 18px 0; }
+    .color-controls label { display: flex; align-items: center; gap: 8px; color: #aaa; font-size: 12px; }
+    input[type=color] { width: 26px; height: 26px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+    code { display: block; font-size: 11px; color: #b8c7be; background: #111; padding: 10px; border-radius: 7px; overflow-x: auto; }
+    .state-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 32px; }
+    .state-card { padding: 18px 12px 28px; border-radius: 12px; background: #1a1a1a; overflow: hidden; }
+    .state-card h3 { text-align: center; color: #999; font-size: 12px; font-weight: 500; margin: 0 0 32px; }
+    .state-row { display: flex; justify-content: center; gap: 16px; }
+    .size-row { display: flex; align-items: flex-end; gap: 14px; }
     .stage { margin: 32px; padding: 56px 24px; border-radius: 16px; background: #1a1a1a; display: flex; justify-content: center; align-items: flex-end; gap: 44px; flex-wrap: wrap; }
     .stage.light { background: #fff; color: #333; }
     .cell { display: flex; flex-direction: column; align-items: center; gap: 14px; }
     .label { font-size: 12px; opacity: .55 }
     h2 { font-size: 13px; font-weight: 500; margin: 24px 32px -16px; opacity: .6 }
+    @media(max-width:720px) { .fantasy-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .workbench { grid-template-columns: 1fr; gap: 8px; } .state-grid { grid-template-columns: 1fr; } .state-row { gap: 32px; } .fantasy-card { min-height: 160px; } .color-controls { flex-wrap: wrap; } .stage { gap: 28px; } }
+    @media(prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>

@@ -23,7 +23,10 @@ export const botAvatarPresets: Record<BotAvatarType, BotAvatarPreset> = {
   pill: { label: 'Pill', color: '#7B77F0', face: 'eyes', faceX: 50, faceY: 50, faceScale: 0.9 },
   pebble: { label: 'Pebble', color: '#2FCB7A', face: 'eyes', faceX: 50, faceY: 50, faceScale: 0.95 },
   puddle: { label: 'Puddle', color: '#FF2A2A', face: 'eyes', faceX: 50, faceY: 50, faceScale: 0.95 },
-  dragon: { label: 'Dragon', color: '#2FCB7A', face: 'eyes', faceX: 50, faceY: 62, faceScale: 0.95, accent: '#FF5FA2', partsDepth: 0.75, nostrils: true },
+  dragon: { label: 'Dragon', color: '#2FCB7A', face: 'eyes', faceX: 50, faceY: 43, faceScale: 0.66, accent: '#FF5FA2', partsDepth: 0.75, nostrils: true, headphones: true, flight: true },
+  'forest-spirit': { label: 'Forest spirit', color: '#70B775', face: 'eyes', faceX: 50, faceY: 63, faceScale: 0.68, accent: '#89C96A' },
+  'winged-dragon': { label: 'Winged dragon', color: '#42D9BD', face: 'eyes', faceX: 50, faceY: 62, faceScale: 0.72, accent: '#F5EDCF', flight: true },
+  phoenix: { label: 'Phoenix', color: '#FF743B', face: 'eyes', faceX: 50, faceY: 66, faceScale: 0.68, accent: '#FFC748' },
 };
 
 export const botAvatarTypes = Object.keys(botAvatarPresets) as BotAvatarType[];

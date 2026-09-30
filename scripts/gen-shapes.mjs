@@ -241,16 +241,18 @@ function horn(root, ctrl, tip, w0, wTip, steps = 10) {
   return clockwise([...left, add(c, mul(n, wTip)), ...cap, sub(c, mul(n, wTip)), ...right.reverse()]);
 }
 
-const HEAD = { cx: 50, cy: 61, rx: 35, ry: 30 };
+const HEAD = { cx: 50, cy: 42, rx: 27, ry: 23 };
 const dragonHead = smoothClosed(clockwise(superellipse(HEAD.cx, HEAD.cy, HEAD.rx, HEAD.ry, 2.5)));
-const hornL = horn([37, 42], [31, 27], [20, 21], 10.5, 4.4);
-const hornR = horn([63, 42], [69, 27], [80, 21], 10.5, 4.4);
+const dragonSnout = smoothClosed(clockwise(superellipse(50, 53, 23, 12, 2.9)));
+const dragonTorso = smoothClosed(clockwise(superellipse(50, 72, 18, 17, 2.2)));
+const hornL = horn([35, 28], [28, 14], [22, 12], 7, 3);
+const hornR = horn([65, 28], [72, 14], [78, 12], 7, 3);
 /* a little crest of three soft spikes along the brow */
 const crest = [
-  roundedPolygon([[42, 38], [50, 21], [58, 38]], 3.6),
+  roundedPolygon([[44, 26], [50, 11], [56, 26]], 3),
 ];
 
-const dragon = dragonHead + smoothClosed(hornL) + smoothClosed(hornR) + crest.join("");
+const dragon = dragonHead + dragonSnout + dragonTorso + smoothClosed(hornL) + smoothClosed(hornR) + crest.join("");
 
 /* Headphones: a band over the top and a cup on each side. They are thin
    parts, drawn behind the head in their own colour. */
@@ -265,10 +267,85 @@ const deg = (d) => (d * Math.PI) / 180;
 const band = arcBand(50, 61, 41, 3, deg(192), deg(348));
 const cupL = roundedPolygon([[5, 47], [19, 47], [19, 75], [5, 75]], 6.5);
 const cupR = roundedPolygon([[81, 47], [95, 47], [95, 75], [81, 75]], 6.5);
-const dragonParts = band + cupL + cupR;
+const headphonePath = band + cupL + cupR;
+const dragonParts = arcBand(50, 42, 33, 3, deg(190), deg(350)) +
+  roundedPolygon([[11, 34], [25, 34], [25, 57], [11, 57]], 6) +
+  roundedPolygon([[75, 34], [89, 34], [89, 57], [75, 57]], 6);
 
 
-const shapes = { clover, flower, triangle: tri, square, blob: blobShape, ghost, circle, drop, star, droid, mech, alien, hexagon, cat, cloud, pill, pebble, puddle, dragon };
+/* ── Fantasy avatars ───────────────────────────────────────────────── */
+/* The supplied PNGs live in assets/references. These are native outlines,
+   so every piece turns and squashes with the same rig as the original. */
+const closed = (points) => smoothClosed(clockwise(points));
+const mirror = (points) => points.map(([x, y]) => [100 - x, y]);
+
+/* A dragon is a head, a little body and articulated limbs, not a round
+   head wearing horns. Feet and their claws share the same hinge. */
+const fullWing = [[34, 69], [25, 62], [22, 55], [12, 52], [5, 56], [1, 67], [10, 63], [14, 75], [21, 72], [27, 83], [35, 77]];
+const fullWingInset = [[32, 70], [25, 64], [20, 59], [9, 57], [10, 63], [16, 72], [21, 69], [29, 77]];
+const foot = [[36, 79], [31, 86], [27, 90], [28, 94], [38, 96], [45, 93], [43, 85]];
+const clawTips = [[[29, 90], [32, 90], [30, 95]], [[33, 90], [36, 90], [34, 96]], [[37, 90], [40, 90], [39, 95]]];
+const tail = [[64, 77], [73, 82], [83, 77], [86, 67], [90, 64], [94, 69], [92, 83], [83, 91], [70, 90], [61, 84]];
+const dragonBodyLayers = [
+  { path: closed(tail), palette: 'body', lightness: -0.08, placement: 'behind', depth: 0.5, motion: 'tail', pivot: [64, 80] },
+  ...[-1, 1].flatMap(side => {
+    const flip = points => side < 0 ? points : mirror(points);
+    const label = side < 0 ? 'left' : 'right';
+    const pivot = [side < 0 ? 34 : 66, 68];
+    return [
+      { path: closed(flip(fullWing)), palette: 'body', lightness: -0.04, placement: 'behind', depth: 0.45, motion: `wing-${label}`, pivot },
+      { path: closed(flip(fullWingInset)), palette: 'body', lightness: 0.14, placement: 'behind', depth: 0.25, motion: `wing-${label}`, pivot },
+      { path: closed(flip(foot)), palette: 'body', lightness: -0.04, placement: 'behind', depth: 0.65, motion: `foot-${label}`, pivot: [side < 0 ? 39 : 61, 82] },
+      { path: clawTips.map(tip => roundedPolygon(clockwise(flip(tip)), 0.7)).join(''), palette: 'body', lightness: 0.4, placement: 'behind', depth: 0.25, motion: `foot-${label}`, pivot: [side < 0 ? 39 : 61, 82] },
+    ];
+  }),
+  { path: closed(superellipse(50, 74, 10, 12, 2.1)), palette: 'body', lightness: 0.2, placement: 'surface', depth: 0, opacity: 0.6 },
+];
+
+const forestSpirit = closed(superellipse(50, 62, 31, 29, 2.6));
+const leaf = [[29, 49], [19, 37], [10, 37], [9, 43], [16, 53], [29, 58]];
+/* Forks are one outline each, with thick, rounded branches at small sizes. */
+const antler = [[34, 40], [30, 31], [27, 26], [19, 23], [16, 18], [18, 14], [22, 15], [29, 21], [30, 17], [29, 10], [32, 6], [36, 7], [38, 13], [36, 24], [42, 37]];
+const forestLayers = [
+  { path: closed(leaf) + closed(mirror(leaf)), palette: 'body', lightness: -0.06, placement: 'behind', depth: 0.65 },
+  { path: closed(antler) + closed(mirror(antler)), palette: 'accent', placement: 'behind', depth: 0.65 },
+];
+
+const wingedDragon = closed(superellipse(50, 59, 31, 32, 2.5));
+const wing = [[25, 49], [17, 40], [8, 39], [2, 45], [3, 48], [9, 46], [12, 54], [16, 53], [21, 62], [27, 58]];
+const wingInset = [[24, 50], [17, 44], [9, 43], [13, 50], [16, 48], [22, 56]];
+const ivoryHornL = horn([33, 35], [27, 26], [29, 14], 7, 2.7);
+const ivoryHornR = horn([67, 35], [75, 26], [73, 15], 7, 2.7);
+const dragonLayers = [
+  ...[-1, 1].flatMap(side => {
+    const flip = points => side < 0 ? points : mirror(points);
+    const motion = side < 0 ? 'wing-left' : 'wing-right';
+    const pivot = [side < 0 ? 27 : 73, 54];
+    return [
+      { path: closed(flip(wing)), palette: 'body', lightness: -0.04, placement: 'behind', depth: 0.55, motion, pivot },
+      { path: closed(flip(wingInset)), palette: 'body', lightness: 0.13, placement: 'behind', depth: 0.3, motion, pivot },
+    ];
+  }),
+  { path: smoothClosed(ivoryHornL) + smoothClosed(ivoryHornR), palette: 'accent', placement: 'behind', depth: 0.7 },
+  { path: closed(superellipse(50, 81, 20, 7, 2)), palette: 'body', lightness: 0.11, placement: 'surface', depth: 0, opacity: 0.4 },
+];
+
+const flame = [[44, 44], [45, 32], [52, 23], [51, 11], [55, 7], [64, 14], [68, 26], [64, 41], [57, 48]];
+const flameL = [[31, 48], [30, 36], [35, 27], [35, 21], [40, 22], [46, 31], [46, 45]];
+const flameR = [[60, 47], [61, 35], [69, 27], [71, 22], [76, 26], [78, 38], [73, 48]];
+const phoenixHead = closed(superellipse(50, 65, 30, 27, 2.2));
+const phoenix = phoenixHead + closed(flame) + closed(flameL) + closed(flameR);
+const featherWing = [[27, 60], [18, 50], [8, 48], [4, 51], [6, 56], [14, 60], [7, 59], [5, 63], [9, 69], [20, 74], [29, 73]];
+const beak = closed([[50, 73], [56, 76], [54, 80], [50, 83], [46, 80], [44, 76]]);
+const flameTip = closed([[52, 22], [53, 15], [54, 10], [58, 11], [63, 17], [63, 24], [59, 29], [55, 27]]);
+const phoenixLayers = [
+  { path: closed(featherWing) + closed(mirror(featherWing)), palette: 'body', lightness: 0.12, placement: 'behind', depth: 0.55 },
+  { path: flameTip, palette: 'accent', placement: 'surface', depth: 0.08 },
+  { path: beak, palette: 'accent', placement: 'surface', depth: 0.2, whenFace: 'eyes' },
+];
+
+const shapes = { clover, flower, triangle: tri, square, blob: blobShape, ghost, circle, drop, star, droid, mech, alien, hexagon, cat, cloud, pill, pebble, puddle, dragon, 'forest-spirit': forestSpirit, 'winged-dragon': wingedDragon, phoenix };
+const layers = { dragon: dragonBodyLayers, 'forest-spirit': forestLayers, 'winged-dragon': dragonLayers, phoenix: phoenixLayers };
 
 /* Thin parts drawn with less depth than the body they sit on. */
 const parts = { droid: droidParts, mech: mechParts, dragon: dragonParts };
@@ -277,14 +354,16 @@ const parts = { droid: droidParts, mech: mechParts, dragon: dragonParts };
 let ts = `/* Generated by scripts/gen-shapes.mjs — do not edit by hand. Body
    outlines in a 100×100 box, centred on (50, 50). */
 
-import type { BotAvatarType } from './types';
+import type { BotAvatarType, BotAvatarShapeLayer } from './types';
 
 export const SHAPE_PATHS: Record<BotAvatarType, string> = {
 `;
-for (const [k, v] of Object.entries(shapes)) ts += `  ${k}: '${v}',\n`;
+for (const [k, v] of Object.entries(shapes)) ts += `  ${k.includes('-') ? `'${k}'` : k}: '${v}',\n`;
 ts += "};\n\n/** Thin parts (antennae) drawn with a fraction of the body's depth. */\nexport const SHAPE_PARTS: Partial<Record<BotAvatarType, string>> = {\n";
 for (const [k, v] of Object.entries(parts)) ts += `  ${k}: '${v}',\n`;
 ts += "};\n";
+ts += `\n/** Shared optional headphones, independent of a type's anatomy. */\nexport const HEADPHONE_PATH = '${headphonePath}';\n`;
+ts += "\n/** Coloured anatomy, ordered from back to front within each placement. */\nexport const SHAPE_LAYERS: Partial<Record<BotAvatarType, readonly BotAvatarShapeLayer[]>> = " + JSON.stringify(layers, null, 2) + ";\n";
 
 const here = dirname(fileURLToPath(import.meta.url));
 writeFileSync(resolve(here, "../src/shapes.ts"), ts);

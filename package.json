@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite demo --config vite.config.ts",
     "typecheck": "tsc --noEmit",
+    "build": "vite build demo --config vite.config.ts --outDir ../dist --emptyOutDir",
+    "test": "node --test tests/avatar.test.mjs",
     "shapes": "node scripts/gen-shapes.mjs"
   },
   "devDependencies": {

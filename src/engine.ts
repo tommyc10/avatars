@@ -122,6 +122,8 @@ const hopSquash = (a: number) => Math.exp(-Math.pow(Math.min(Math.abs(a), Math.a
 
 
 export interface Pose {
+  /** Shared animation clock for articulated parts; optional for custom poses. */
+  time?: number;
   /** radians; yaw > 0 turns the face to the viewer's right, pitch > 0 looks up */
   yaw: number;
   pitch: number;
@@ -736,6 +738,7 @@ export class Sim {
     sy *= 1 - 0.55 * jelly;
 
     p.pitch = basePitch + pitchAdd;
+    p.time = t;
     p.roll = baseRoll + rollAdd;
     p.x = 0;
     p.y = baseY + hopY + bob;
@@ -758,6 +761,7 @@ export class Sim {
 export function restPose(state: BotAvatarState): Pose {
   const r = REST[state];
   return {
+    time: 0,
     yaw: 0,
     pitch: r.pitch,
     roll: r.roll,
